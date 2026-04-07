@@ -2,12 +2,13 @@ import threading
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import analyzer
 from app.database import get_db, SessionLocal
 from app.models import Circular
+from app.routes.fetch import _analyze_in_background
 from app.scrapers import ifsca as ifsca_scraper
 
 router = APIRouter(prefix="/circulars", tags=["circulars"])
@@ -136,6 +137,25 @@ def rescrape_circular(circular_id: str, db: Session = Depends(get_db)):
 
     threading.Thread(target=_analyze_locked, daemon=True).start()
     return {"status": "rescraping", "pdf_fetched": True}
+
+
+@router.post("/reanalyze-all")
+def reanalyze_all(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Reset all analysis fields on every circular and re-queue them for analysis."""
+    rows = db.query(Circular).all()
+    for c in rows:
+        c.summary = None
+        c.why_it_matters = None
+        c.relevance_score = None
+        c.action_items = []
+        c.analyzed_at = None
+    db.commit()
+
+    ids = [c.id for c in rows]
+    if ids:
+        background_tasks.add_task(_analyze_in_background, ids)
+
+    return {"status": "queued", "count": len(ids)}
 
 
 @router.patch("/{circular_id}/review")

@@ -271,6 +271,7 @@ export default function CircularFeed() {
     reviewed: "ALL",
     datePreset: "ALL",
   });
+  const [reanalyzing, setReanalyzing] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -357,6 +358,18 @@ export default function CircularFeed() {
     setCirculars((prev) =>
       prev.map((c) => (c.id === id ? { ...c, is_reviewed: !c.is_reviewed } : c))
     );
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleReanalyzeAll = async () => {
+    if (reanalyzing) return;
+    setReanalyzing(true);
+    try {
+      await fetch(`${API_URL}/circulars/reanalyze-all`, { method: "POST" });
+      setTimeout(() => refreshCirculars(filtersRef.current, pageRef.current), 500);
+    } finally {
+      setReanalyzing(false);
+    }
   };
 
   const handleSelectRow = (id: string) =>
@@ -527,6 +540,8 @@ export default function CircularFeed() {
           onRescrape={() => setTimeout(() => refreshCirculars(filtersRef.current, pageRef.current), 1000)}
         />
       )}
+
+      {/* Re-analyze All button hidden — API available at POST /circulars/reanalyze-all */}
     </div>
   );
 }
