@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
+}
+
+:root {
+  --lime:       #C8F135;
+  --lime-dark:  #b0d62a;
+  --ink:        #111111;
+  --ink-soft:   #444444;
+  --surface:    #F2F2EE;
+  --card:       #FFFFFF;
+  --border:     #E8E8E4;
+  --muted:      #999990;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4d4d0; border-radius: 3px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
