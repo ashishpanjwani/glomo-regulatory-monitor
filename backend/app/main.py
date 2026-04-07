@@ -1,6 +1,8 @@
 import threading
 from contextlib import asynccontextmanager
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,11 +26,33 @@ def _resume_pending_analysis() -> None:
         ).start()
 
 
+def _scheduled_fetch() -> None:
+    """Runs every day at 9 AM IST (03:30 UTC) — scrapes + analyzes new circulars."""
+    print("[scheduler] daily fetch starting", flush=True)
+    db = SessionLocal()
+    try:
+        from app.routes.fetch import fetch_now
+        from fastapi import BackgroundTasks
+        fetch_now(BackgroundTasks(), db)
+    except Exception as e:
+        print(f"[scheduler] fetch failed: {e}", flush=True)
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _resume_pending_analysis()
+
+    scheduler = BackgroundScheduler(timezone="UTC")
+    scheduler.add_job(_scheduled_fetch, CronTrigger(hour=3, minute=30))
+    scheduler.start()
+    print("[scheduler] started — daily fetch at 09:00 IST (03:30 UTC)", flush=True)
+
     yield
+
+    scheduler.shutdown()
 
 
 app = FastAPI(title="Glomo Regulatory Monitor", version="1.0.0", lifespan=lifespan)
